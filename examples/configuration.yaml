@@ -1,0 +1,183 @@
+# Example Home Assistant configuration for PollenPal integration
+
+# Template sensors for combined pollen information
+template:
+  - sensor:
+      - name: "Pollen Summary"
+        state: >
+          {% set grass = states('sensor.pollenpal_grass_pollen_level') %}
+          {% set trees = states('sensor.pollenpal_tree_pollen_level') %}
+          {% set weeds = states('sensor.pollenpal_weed_pollen_level') %}
+          Grass: {{ grass }}, Trees: {{ trees }}, Weeds: {{ weeds }}
+        attributes:
+          location: "{{ state_attr('sensor.pollenpal_grass_pollen_level', 'location') }}"
+          advice: "{{ state_attr('sensor.pollenpal_pollen_alert_level', 'advice') }}"
+          
+      - name: "Highest Pollen Level"
+        state: >
+          {% set levels = ['Low', 'Moderate', 'High', 'Very High'] %}
+          {% set grass = states('sensor.pollenpal_grass_pollen_level') %}
+          {% set trees = states('sensor.pollenpal_tree_pollen_level') %}
+          {% set weeds = states('sensor.pollenpal_weed_pollen_level') %}
+          {% set all_levels = [grass, trees, weeds] %}
+          {% set max_level = 'Low' %}
+          {% for level in all_levels %}
+            {% if level in levels and levels.index(level) > levels.index(max_level) %}
+              {% set max_level = level %}
+            {% endif %}
+          {% endfor %}
+          {{ max_level }}
+
+# Automations for pollen alerts
+automation:
+  - alias: "High Pollen Alert Notification"
+    description: "Send notification when pollen levels are high"
+    trigger:
+      - platform: state
+        entity_id: sensor.pollenpal_pollen_alert_level
+        to: "high"
+    condition:
+      - condition: time
+        after: "06:00:00"
+        before: "22:00:00"
+    action:
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "🌾 High Pollen Alert!"
+          message: >
+            Pollen levels are high in {{ state_attr('sensor.pollenpal_grass_pollen_level', 'location') }}.
+            {% set advice = state_attr('sensor.pollenpal_pollen_alert_level', 'advice') %}
+            {% if advice %}
+            Advice: {{ advice[0] if advice|length > 0 else 'Take precautions when going outdoors.' }}
+            {% endif %}
+          data:
+            tag: "pollen_alert"
+            group: "pollen"
+
+  - alias: "Morning Pollen Report"
+    description: "Daily morning pollen report"
+    trigger:
+      - platform: time
+        at: "07:00:00"
+    condition:
+      - condition: state
+        entity_id: sensor.pollenpal_grass_pollen_level
+        state: 
+          - "Moderate"
+          - "High"
+          - "Very High"
+    action:
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "🌅 Morning Pollen Report"
+          message: >
+            Today's pollen levels in {{ state_attr('sensor.pollenpal_grass_pollen_level', 'location') }}:
+            🌱 Grass: {{ states('sensor.pollenpal_grass_pollen_level') }}
+            🌳 Trees: {{ states('sensor.pollenpal_tree_pollen_level') }}
+            🌼 Weeds: {{ states('sensor.pollenpal_weed_pollen_level') }}
+
+  - alias: "Pollen Level Changed"
+    description: "Log when pollen levels change significantly"
+    trigger:
+      - platform: state
+        entity_id: 
+          - sensor.pollenpal_grass_pollen_level
+          - sensor.pollenpal_tree_pollen_level
+          - sensor.pollenpal_weed_pollen_level
+        from:
+          - "Low"
+          - "Moderate"
+        to:
+          - "High"
+          - "Very High"
+    action:
+      - service: logbook.log
+        data:
+          name: "PollenPal"
+          message: >
+            {{ trigger.to_state.attributes.friendly_name }} changed from 
+            {{ trigger.from_state.state }} to {{ trigger.to_state.state }}
+          entity_id: "{{ trigger.entity_id }}"
+
+# Input booleans for pollen alert preferences
+input_boolean:
+  pollen_alerts_enabled:
+    name: "Enable Pollen Alerts"
+    icon: mdi:bell-alert
+
+  pollen_morning_report:
+    name: "Enable Morning Pollen Report"
+    icon: mdi:weather-sunny-alert
+
+# Scripts for pollen-related actions
+script:
+  check_pollen_levels:
+    alias: "Check Current Pollen Levels"
+    sequence:
+      - service: homeassistant.update_entity
+        target:
+          entity_id:
+            - sensor.pollenpal_grass_pollen_level
+            - sensor.pollenpal_tree_pollen_level
+            - sensor.pollenpal_weed_pollen_level
+            - sensor.pollenpal_pollen_alert_level
+      - delay: "00:00:05"
+      - service: persistent_notification.create
+        data:
+          title: "Current Pollen Levels"
+          message: >
+            Location: {{ state_attr('sensor.pollenpal_grass_pollen_level', 'location') }}
+            
+            🌱 Grass Pollen: {{ states('sensor.pollenpal_grass_pollen_level') }} ({{ states('sensor.pollenpal_grass_pollen_count') }})
+            🌳 Tree Pollen: {{ states('sensor.pollenpal_tree_pollen_level') }} ({{ states('sensor.pollenpal_tree_pollen_count') }})
+            🌼 Weed Pollen: {{ states('sensor.pollenpal_weed_pollen_level') }} ({{ states('sensor.pollenpal_weed_pollen_count') }})
+            
+            Alert Level: {{ states('sensor.pollenpal_pollen_alert_level') }}
+          notification_id: "pollen_check"
+
+# Binary sensors for high pollen conditions
+binary_sensor:
+  - platform: template
+    sensors:
+      high_grass_pollen:
+        friendly_name: "High Grass Pollen"
+        value_template: >
+          {{ states('sensor.pollenpal_grass_pollen_level') in ['High', 'Very High'] }}
+        icon_template: >
+          {% if states('sensor.pollenpal_grass_pollen_level') in ['High', 'Very High'] %}
+            mdi:grass
+          {% else %}
+            mdi:grass-outline
+          {% endif %}
+        
+      high_tree_pollen:
+        friendly_name: "High Tree Pollen"
+        value_template: >
+          {{ states('sensor.pollenpal_tree_pollen_level') in ['High', 'Very High'] }}
+        icon_template: >
+          {% if states('sensor.pollenpal_tree_pollen_level') in ['High', 'Very High'] %}
+            mdi:tree
+          {% else %}
+            mdi:tree-outline
+          {% endif %}
+        
+      any_high_pollen:
+        friendly_name: "Any High Pollen"
+        value_template: >
+          {{ states('sensor.pollenpal_grass_pollen_level') in ['High', 'Very High'] or
+             states('sensor.pollenpal_tree_pollen_level') in ['High', 'Very High'] or
+             states('sensor.pollenpal_weed_pollen_level') in ['High', 'Very High'] }}
+        icon_template: >
+          {% if states('sensor.pollenpal_grass_pollen_level') in ['High', 'Very High'] or
+                states('sensor.pollenpal_tree_pollen_level') in ['High', 'Very High'] or
+                states('sensor.pollenpal_weed_pollen_level') in ['High', 'Very High'] %}
+            mdi:alert-circle
+          {% else %}
+            mdi:check-circle-outline
+          {% endif %}
+
+# Enable debug logging for troubleshooting (uncomment if needed)
+# logger:
+#   default: info
+#   logs:
+#     custom_components.pollenpal: debug 

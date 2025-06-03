@@ -1,0 +1,250 @@
+# Example Lovelace dashboard configuration for PollenPal integration
+
+title: Pollen Dashboard
+views:
+  - title: Pollen Levels
+    path: pollen
+    icon: mdi:flower-pollen
+    cards:
+      # Main pollen overview card
+      - type: vertical-stack
+        cards:
+          - type: markdown
+            content: |
+              # 🌾 Pollen Levels
+              **Location:** {{ state_attr('sensor.pollenpal_grass_pollen_level', 'location') }}
+              
+              **Last Updated:** {{ as_timestamp(states.sensor.pollenpal_grass_pollen_level.last_updated) | timestamp_custom('%d/%m/%Y at %H:%M') }}
+
+          # Current pollen levels
+          - type: glance
+            title: Current Pollen Levels
+            entities:
+              - entity: sensor.pollenpal_grass_pollen_level
+                name: Grass
+                icon: mdi:grass
+              - entity: sensor.pollenpal_tree_pollen_level
+                name: Trees
+                icon: mdi:tree
+              - entity: sensor.pollenpal_weed_pollen_level
+                name: Weeds
+                icon: mdi:flower
+              - entity: sensor.pollenpal_pollen_alert_level
+                name: Alert
+                icon: mdi:alert-circle
+
+      # Detailed pollen information
+      - type: entities
+        title: Detailed Pollen Information
+        entities:
+          - entity: sensor.pollenpal_grass_pollen_level
+            name: Grass Pollen Level
+            secondary_info: last-updated
+          - entity: sensor.pollenpal_grass_pollen_count
+            name: Grass Pollen Count
+          - entity: sensor.pollenpal_tree_pollen_level
+            name: Tree Pollen Level
+            secondary_info: last-updated
+          - entity: sensor.pollenpal_tree_pollen_count
+            name: Tree Pollen Count
+          - entity: sensor.pollenpal_weed_pollen_level
+            name: Weed Pollen Level
+            secondary_info: last-updated
+          - entity: sensor.pollenpal_weed_pollen_count
+            name: Weed Pollen Count
+          - type: divider
+          - entity: sensor.pollenpal_pollen_alert_level
+            name: Overall Alert Level
+            secondary_info: last-updated
+
+      # Pollen gauge cards (if using custom gauge card)
+      - type: horizontal-stack
+        cards:
+          - type: gauge
+            entity: sensor.pollenpal_grass_pollen_level
+            name: Grass Pollen
+            needle: true
+            min: 0
+            max: 3
+            severity:
+              green: 0
+              yellow: 1
+              red: 2
+            unit: " "
+            
+          - type: gauge
+            entity: sensor.pollenpal_tree_pollen_level
+            name: Tree Pollen
+            needle: true
+            min: 0
+            max: 3
+            severity:
+              green: 0
+              yellow: 1
+              red: 2
+            unit: " "
+            
+          - type: gauge
+            entity: sensor.pollenpal_weed_pollen_level
+            name: Weed Pollen
+            needle: true
+            min: 0
+            max: 3
+            severity:
+              green: 0
+              yellow: 1
+              red: 2
+            unit: " "
+
+      # Health advice card
+      - type: markdown
+        title: Health Advice
+        content: |
+          {% set advice = state_attr('sensor.pollenpal_pollen_alert_level', 'advice') %}
+          {% if advice and advice|length > 0 %}
+          **Current Recommendations:**
+          {% for item in advice %}
+          - {{ item }}
+          {% endfor %}
+          {% else %}
+          No specific health advice available at the moment.
+          {% endif %}
+          
+          {% set high_levels = state_attr('sensor.pollenpal_pollen_alert_level', 'high_levels') %}
+          {% set moderate_levels = state_attr('sensor.pollenpal_pollen_alert_level', 'moderate_levels') %}
+          
+          {% if high_levels and high_levels|length > 0 %}
+          **⚠️ High Levels:** {{ high_levels | join(', ') }}
+          {% endif %}
+          
+          {% if moderate_levels and moderate_levels|length > 0 %}
+          **⚡ Moderate Levels:** {{ moderate_levels | join(', ') }}
+          {% endif %}
+
+      # Binary sensor status
+      - type: glance
+        title: Pollen Alerts
+        entities:
+          - entity: binary_sensor.high_grass_pollen
+            name: High Grass
+          - entity: binary_sensor.high_tree_pollen
+            name: High Trees
+          - entity: binary_sensor.any_high_pollen
+            name: Any High
+
+      # Quick actions
+      - type: entities
+        title: Quick Actions
+        entities:
+          - entity: script.check_pollen_levels
+            name: Refresh Pollen Data
+            icon: mdi:refresh
+          - entity: input_boolean.pollen_alerts_enabled
+            name: Enable Alerts
+          - entity: input_boolean.pollen_morning_report
+            name: Morning Reports
+
+  # Historical view (if you have history/recorder enabled)
+  - title: Pollen History
+    path: pollen-history
+    icon: mdi:chart-line
+    cards:
+      - type: history-graph
+        title: Grass Pollen Levels (7 days)
+        entities:
+          - entity: sensor.pollenpal_grass_pollen_level
+        hours_to_show: 168
+        refresh_interval: 3600
+
+      - type: history-graph
+        title: Tree Pollen Levels (7 days)
+        entities:
+          - entity: sensor.pollenpal_tree_pollen_level
+        hours_to_show: 168
+        refresh_interval: 3600
+
+      - type: history-graph
+        title: Weed Pollen Levels (7 days)
+        entities:
+          - entity: sensor.pollenpal_weed_pollen_level
+        hours_to_show: 168
+        refresh_interval: 3600
+
+      - type: history-graph
+        title: All Pollen Types (24 hours)
+        entities:
+          - entity: sensor.pollenpal_grass_pollen_level
+            name: Grass
+          - entity: sensor.pollenpal_tree_pollen_level
+            name: Trees
+          - entity: sensor.pollenpal_weed_pollen_level
+            name: Weeds
+        hours_to_show: 24
+        refresh_interval: 3600
+
+  # Mobile-friendly compact view
+  - title: Mobile View
+    path: pollen-mobile
+    icon: mdi:cellphone
+    panel: false
+    cards:
+      - type: vertical-stack
+        cards:
+          # Compact overview
+          - type: picture-elements
+            image: /local/pollen-background.jpg  # Add your own background image
+            elements:
+              - type: state-label
+                entity: sensor.pollenpal_grass_pollen_level
+                prefix: "Grass: "
+                style:
+                  top: 20%
+                  left: 50%
+                  color: white
+                  font-size: 16px
+                  text-shadow: 2px 2px 4px rgba(0,0,0,0.8)
+              - type: state-label
+                entity: sensor.pollenpal_tree_pollen_level
+                prefix: "Trees: "
+                style:
+                  top: 40%
+                  left: 50%
+                  color: white
+                  font-size: 16px
+                  text-shadow: 2px 2px 4px rgba(0,0,0,0.8)
+              - type: state-label
+                entity: sensor.pollenpal_weed_pollen_level
+                prefix: "Weeds: "
+                style:
+                  top: 60%
+                  left: 50%
+                  color: white
+                  font-size: 16px
+                  text-shadow: 2px 2px 4px rgba(0,0,0,0.8)
+              - type: state-label
+                entity: sensor.pollenpal_pollen_alert_level
+                prefix: "Alert: "
+                style:
+                  top: 80%
+                  left: 50%
+                  color: white
+                  font-size: 18px
+                  font-weight: bold
+                  text-shadow: 2px 2px 4px rgba(0,0,0,0.8)
+
+          # Quick status
+          - type: horizontal-stack
+            cards:
+              - type: button
+                entity: binary_sensor.any_high_pollen
+                name: High Pollen
+                icon: mdi:alert-circle
+                tap_action:
+                  action: more-info
+              - type: button
+                entity: script.check_pollen_levels
+                name: Refresh
+                icon: mdi:refresh
+                tap_action:
+                  action: call-service
+                  service: script.check_pollen_levels 
