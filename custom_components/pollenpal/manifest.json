@@ -1,13 +1,13 @@
 {
   "domain": "pollenpal",
   "name": "PollenPal",
-  "codeowners": ["@yourusername"],
+  "codeowners": ["@TheTrueShell"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/yourusername/pollenpal-ha",
+  "documentation": "https://github.com/TheTrueShell/PollenPalHA",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/yourusername/pollenpal-ha/issues",
+  "issue_tracker": "https://github.com/TheTrueShell/PollenPalHA/issues",
   "requirements": [],
   "version": "1.0.0"
 } 
