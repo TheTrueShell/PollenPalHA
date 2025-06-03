@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "PollenPal Configuration",
+        "description": "Configure your PollenPal integration",
+        "data": {
+          "api_url": "API URL",
+          "location": "Location (UK city or postcode)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the PollenPal API. Please check the URL and try again.",
+      "invalid_location": "The specified location was not found. Please check the location name or postcode.",
+      "unknown": "Unexpected error occurred"
+    },
+    "abort": {
+      "already_configured": "This PollenPal configuration is already set up"
+    }
+  }
+} 
