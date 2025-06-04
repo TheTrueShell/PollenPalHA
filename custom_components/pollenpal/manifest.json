@@ -1,5 +1,5 @@
 {
-  "domain": "your_pollen_pal",
+  "domain": "pollenpal",
   "name": "Your Pollen Pal",
   "codeowners": ["@TheTrueShell"],
   "config_flow": true,
